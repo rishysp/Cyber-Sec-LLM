@@ -1,0 +1,13 @@
+{
+  "baseline_eval_loss": 2.2286536693573,
+  "final_eval_loss": 1.9274120330810547,
+  "train_minutes": 2.4,
+  "peak_torch_reserved_gb": 6.33,
+  "peak_device_used_gb": 7.88,
+  "train_examples": 2101,
+  "val_examples": 160,
+  "max_seq": 1024,
+  "lora_r": 16,
+  "effective_batch": 16,
+  "epochs": 0.05
+}

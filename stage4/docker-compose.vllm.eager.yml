@@ -1,0 +1,43 @@
+# Stage 4 - serve the AWQ model with vLLM (OpenAI-compatible API on http://localhost:8000/v1)
+# Start:  cd ~/secrag/stage4 && docker compose -f docker-compose.vllm.yml up
+# Stop:   docker compose -f docker-compose.vllm.yml down
+#
+# 8 GB GPU tuning notes (each flag is an interview talking point):
+#  --max-model-len 3072        KV cache is sized from this; the model's native 131072 would never fit
+#  --gpu-memory-utilization    fraction of TOTAL VRAM vLLM may claim. Windows already uses ~1 GB, so 0.85 (6.8 GB) is
+#                              about the ceiling. Lower to 0.80 if you get "Free memory ... less than desired".
+#  --max-num-seqs 2            we serve one interactive user; fewer slots = less activation/KV reservation
+#  --max-num-batched-tokens    caps prefill chunk size, which caps the activation memory spike
+#  --enforce-eager             skips CUDA-graph capture (saves ~0.5 GB+ of VRAM, costs some decode speed).
+#                              Once it runs, remove this line and measure the difference.
+#  --dtype float16             Marlin 4-bit kernels run with fp16 activations
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.29.0-cu129      # pinned; if the pull fails use :latest and record `docker images --digests`
+    container_name: secrag-vllm
+    ipc: host
+    ports:
+      - "127.0.0.1:8000:8000"                  # localhost only, never exposed to the network
+    volumes:
+      - ${MODEL_DIR:-../models/llama31-8b-secure-awq}:/model:ro
+    environment:
+      - HF_HUB_OFFLINE=1                       # runtime must never reach the internet
+      - TRANSFORMERS_OFFLINE=1
+      - VLLM_WSL2_ENABLE_PIN_MEMORY=1          # reported as needed for vLLM in Docker Desktop on WSL2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command:
+      - /model
+      - --served-model-name=secrag-llama
+      - --dtype=float16
+      - --max-model-len=3072
+      - --gpu-memory-utilization=0.85
+      - --max-num-seqs=2
+      - --max-num-batched-tokens=2048
+      - --host=0.0.0.0
+      - --port=8000

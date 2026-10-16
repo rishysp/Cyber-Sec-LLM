@@ -1,0 +1,15 @@
+# OPTIONAL hardening: puts vLLM + the orchestrator on a network with NO route to the outside world, so "offline" is
+# enforced by Docker, not just by habit. Only Open WebUI keeps a host-published port.
+# Side effect: the debug ports 8000/8100 stop working from the host (internal networks cannot be published).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.airgap.yml up -d
+networks:
+  backend:
+    internal: true
+services:
+  vllm:
+    networks: [backend]
+  orchestrator:
+    networks: [backend]
+  open-webui:
+    networks: [backend, default]
